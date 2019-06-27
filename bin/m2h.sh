@@ -24,11 +24,24 @@ then
 	usage
 fi
 
-unset cssopts
-for f in *.css
-do
-	cssopts="$cssopts --css=${f}"
-done
+unset style
+style=`	find . -maxdepth 1 -name "*.css" |
+	xargs --no-run-if-empty -L 1 basename |
+	xargs -I FILE echo "-css=FILE" |
+	xargs echo`
+if [ -z "$style" ]
+then
+	homedir=`dirname $0`
+	if [ -f "$homedir/style.html" ]
+	then
+		style="--include-in-header=\"${homedir}/style.html\""
+	fi
+fi
+
+EchoRun () {
+	echo "==> ${*}"
+	eval "${*}"
+}
 
 for f in "${@}"
 do
@@ -40,8 +53,7 @@ do
 	then
 		infile="${base}.md"
 	else
-		echo "$self: $f not found"
-		continue
+		infile="${f}"
 	fi
 	outfile="${base}.html"
 	if head -n1 "${infile}" | grep --quiet "^#"
@@ -52,12 +64,14 @@ do
 	fi
 	if [ -f ${infile} ]
 	then
+		EchoRun						\
 		pandoc	--standalone				\
 			--metadata pagetitle="${pagetitle}"	\
+			"${style}"				\
 			--from markdown				\
 			--to html				\
-			$cssopts				\
-			--output="${outfile}" "${infile}"
+			--output="${outfile}"			\
+			"${infile}"
 	fi
 done
 
